@@ -4,13 +4,15 @@ from entities import *
 from map import *
 
 class GameSession:
-    def __init__(self, player: Character, current_level: Level):
+    def __init__(self, player: Character, current_level: Level, level_generator: LevelGenerator):
         self.player = player
         self.current_level = current_level
+        self.level_generator = level_generator
         self.steps_passed: int = 0
         self.enemies_killed: int = 0
         self.food_eaten: int = 0
         self.is_game_over = False
+        self.is_victory = False
 
     def try_move_player(self, dx: int = 0, dy: int = 0):
         new_x = self.player.x + dx
@@ -38,6 +40,19 @@ class GameSession:
                 if success:
                     self.current_level.items.remove(item)
                     break
+                
+        if self.current_level.is_exit(self.player.x, self.player.y):
+            if self.current_level.index == 21:
+                self.is_victory = True
+                return
+            else:
+                next_index = self.current_level.index + 1
+                new_level, px, py = self.level_generator.build_level(next_index)
+                self.current_level = new_level
+                self.player.x = px
+                self.player.y = py
+                return
+
         self._update_enemies_turn()
 
     def process_combat(self, attacker: Creature, defender: Creature):
