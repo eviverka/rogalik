@@ -101,6 +101,7 @@ class Enemy(Creature):
                 self.strength = 2
                 self.dexterity = 7
                 self.hostility = 2
+                self.is_invisible = False
             case "ogre":
                 self.max_health = 45
                 self.strength = 10

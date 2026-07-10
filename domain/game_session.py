@@ -1,5 +1,6 @@
 import random
 
+from collections import deque
 from entities import *
 from map import *
 
@@ -40,7 +41,7 @@ class GameSession:
                 if success:
                     self.current_level.items.remove(item)
                     break
-                
+
         if self.current_level.is_exit(self.player.x, self.player.y):
             if self.current_level.index == 21:
                 self.is_victory = True
@@ -92,11 +93,97 @@ class GameSession:
         for enemy in self.current_level.enemies:
             if self.player.health <= 0:
                 break
+
             if enemy.enemy_type == "ogre" and enemy.is_resting == True:
                 enemy.is_resting = False
                 continue
-            if abs(enemy.x - self.player.x) + abs(enemy.y - self.player.y) == 1:
+
+            distance = abs(enemy.x - self.player.x) + abs(enemy.y - self.player.y)
+
+            if enemy.enemy_type == "ghost":
+                if distance <= enemy.hostility:
+                    enemy.is_invisible = False
+                else:
+                    if random.randint(1, 100) <= 40:
+                        enemy.is_invisible = not enemy.is_invisible
+                        
+            if distance == 1:
                 self.process_combat(enemy, self.player)
+            elif distance <= enemy.hostility:
+                nx, ny = self.get_next_step(enemy)
+                enemy.x = nx
+                enemy.y = ny
+            elif distance > enemy.hostility:
+                nx, ny = self.make_random_move(enemy)
+                enemy.x = nx
+                enemy.y = ny
+
+    def get_next_step(self, enemy: Enemy) -> tuple [int, int]:
+        queue = deque([(enemy.x, enemy.y)])
+        visited = set()
+        parent = {}
+        found = False
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
+        while queue:
+            current = queue.popleft()
+            cx, cy = current
+
+            for dx, dy in directions:
+                nx, ny = cx+dx, cy+dy
+                neighbor = (nx, ny)
+
+                if nx == self.player.x and ny == self.player.y:
+                    parent[neighbor] = current
+                    curr = (self.player.x, self.player.y)
+                    while parent.get(curr) != (enemy.x, enemy.y):
+                        curr = parent[curr]
+                    return curr
+
+                if self.current_level.is_walkable(nx, ny) and neighbor not in visited:
+                    if not any(e.x == nx and e.y == ny for e in self.current_level.enemies):
+                        visited.add(neighbor)
+                        parent[neighbor] = current
+                        queue.append(neighbor)
+
+        return enemy.x, enemy.y
+    
+    def make_random_move(self, enemy: Enemy) -> tuple[int, int]:
+        def cell_is_free(x: int, y: int) -> bool:
+            return self.current_level.is_walkable(x, y) and not any(e.x == x and e.y == y for e in self.current_level.enemies)
+        
+        cross_directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        diagonal_directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+
+        if enemy.enemy_type == "ghost":
+            ghost_room = None
+            for room in self.current_level.rooms:
+                if room.has_point(enemy.x, enemy.y):
+                    ghost_room = room
+                    break
+            
+            for _ in range(10):
+                tx = random.randint(ghost_room.x + 1, ghost_room.x + ghost_room.width - 2)
+                ty = random.randint(ghost_room.y + 1, ghost_room.y + ghost_room.height - 2)
+                if cell_is_free(tx, ty):
+                    return tx, ty
+            return enemy.x, enemy.y
+
+        if enemy.enemy_type == "snake_mage":
+            valid_dirs = [(dx, dy) for dx, dy in diagonal_directions if cell_is_free(enemy.x + dx, enemy.y + dy)]
+        elif enemy.enemy_type == "ogre":
+            valid_dirs = [(dx, dy) for dx, dy in cross_directions if cell_is_free(enemy.x + dx, enemy.y + dy) and cell_is_free(enemy.x + dx*2, enemy.y + dy*2)]
+        else:
+            valid_dirs = [(dx, dy) for dx, dy in cross_directions if cell_is_free(enemy.x + dx, enemy.y + dy)]
+
+        if valid_dirs:
+            dx, dy = random.choice(valid_dirs)
+            if enemy.enemy_type == "ogre":
+                return enemy.x + dx * 2, enemy.y + dy * 2
+            return enemy.x + dx, enemy.y + dy
+
+        return enemy.x, enemy.y
+
 
     def get_free_cell_around(self, start_x: int, start_y: int) -> tuple [int, int]:
         directions = [(0,1),(1,0),(0,-1),(-1,0)]
