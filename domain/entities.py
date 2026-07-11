@@ -22,8 +22,35 @@ class Item:
         self.dexterity_bonus = dexterity_bonus
         self.cost = cost
 
+    def to_dict(self) -> dict:
+        return {
+            "x": self.x,
+            "y": self.y,
+            "item_type": self.item_type,
+            "name": self.name,
+            "health_bonus": self.health_bonus,
+            "max_health_bonus": self.max_health_bonus,
+            "strength_bonus": self.strength_bonus,
+            "dexterity_bonus": self.dexterity_bonus,
+            "cost": self.cost
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            x=data["x"],
+            y=data["y"],
+            item_type=data["item_type"],
+            name=data["name"],
+            health_bonus=data["health_bonus"],
+            max_health_bonus=data["max_health_bonus"],
+            strength_bonus=data["strength_bonus"],
+            dexterity_bonus=data["dexterity_bonus"],
+            cost=data["cost"]
+        )
+
 class Character(Creature):
-    def __init__(self, start_x: int, start_y: int, max_health: int, strength: int, dexterity: int, current_weapon = None, backpack = None):
+    def __init__(self, start_x: int, start_y: int, max_health: int, strength: int, dexterity: int, current_weapon: Item = None, backpack = None):
         super().__init__(start_x, start_y, max_health, strength, dexterity)
         self.gold = 0
 
@@ -76,6 +103,52 @@ class Character(Creature):
                 old_weapon = self.current_weapon
                 self.current_weapon = item
                 return True, old_weapon
+    
+    def to_dict(self) -> dict:
+        backpack_dict = {
+            "food": [item.to_dict() for item in self.backpack["food"]],
+            "elixirs": [item.to_dict() for item in self.backpack["elixirs"]],
+            "scrolls": [item.to_dict() for item in self.backpack["scrolls"]],
+            "weapons": [item.to_dict() for item in self.backpack["weapons"]]
+        }
+        return {
+            "x": self.x,
+            "y": self.y,
+            "health": self.health,
+            "max_health": self.max_health,
+            "strength": self.strength,
+            "dexterity": self.dexterity,
+            "gold": self.gold,
+            "current_weapon": self.current_weapon.to_dict() if self.current_weapon else None,
+            "backpack": backpack_dict
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict):
+        player = cls(
+            start_x = data["x"],
+            start_y = data["y"],
+            max_health=data["max_health"],
+            strength=data["strength"],
+            dexterity=data["dexterity"]
+        )
+        
+        player.health = data["health"]
+        player.gold = data["gold"]
+
+        if data["current_weapon"] is not None:
+            player.current_weapon = Item.from_dict(data["current_weapon"])
+        else:
+            player.current_weapon = None
+
+        player.backpack = {
+            "food": [Item.from_dict(item_data) for item_data in data["backpack"]["food"]],
+            "elixirs": [Item.from_dict(item_data) for item_data in data["backpack"]["elixirs"]],
+            "scrolls": [Item.from_dict(item_data) for item_data in data["backpack"]["scrolls"]],
+            "weapons": [Item.from_dict(item_data) for item_data in data["backpack"]["weapons"]]
+        }
+        
+        return player
                 
 
 class Enemy(Creature):
@@ -117,3 +190,25 @@ class Enemy(Creature):
                 self.hostility = 1
 
         self.health = self.max_health
+    
+    def to_dict(self) -> dict:
+        return {
+            "x": self.x,
+            "y": self.y,
+            "enemy_type": self.enemy_type,
+            "health": self.health,
+            "max_health": self.max_health,
+            "is_first_hit": getattr(self, "is_first_hit", False),
+            "is_resting": getattr(self, "is_resting", False),
+            "is_invisible": getattr(self, "is_invisible", False)
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict):
+        enemy = cls(data["x"], data["y"], data["enemy_type"])
+        enemy.health = data["health"]
+        enemy.max_health = data["max_health"]
+        setattr(enemy, "is_first_hit", data["is_first_hit"])
+        setattr(enemy, "is_resting", data["is_resting"])
+        setattr(enemy, "is_invisible", data["is_invisible"])
+        return enemy

@@ -79,7 +79,34 @@ class Level:
                         self.discovered_cells.add((lx, ly))
                         if not self.is_walkable(lx, ly):
                             break
-
+    
+    def to_dict(self) -> dict:
+        return {
+            "index": self.index,
+            "exit_x": self.exit_x,
+            "exit_y": self.exit_y,
+            "discovered_cells": [list(self.discovered_cells)],
+            "enemies": [enemy.to_dict() for enemy in self.enemies],
+            "items": [item.to_dict() for item in self.items],
+            "rooms": [(room.x, room.y, room.width, room.height) for room in self.rooms],
+            "corridors": [list(corridor.points) for corridor in self.corridors]
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict):
+        level = cls(data["index"])
+        level.exit_x = data["exit_x"]
+        level.exit_y = data["exit_y"]
+        level.discovered_cells = {tuple(cell) for cell in data["discovered_cells"]}
+        for room in data["rooms"]:
+            level.rooms.append(Room(room[0], room[1], room[2], room[3]))
+        for corridor in data["corridors"]:
+            points = {tuple(point) for point in corridor}
+            level.corridors.append(Corridor(points))
+        level.enemies = [Enemy.from_dict(enemy_data) for enemy_data in data["enemies"]]
+        level.items = [Item.from_dict(item_data) for item_data in data["items"]]
+        
+        return level
 
 class LevelGenerator:
     def __init__(self, map_width: int = 80, map_height: int = 24):

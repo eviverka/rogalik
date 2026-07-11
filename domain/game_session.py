@@ -217,3 +217,22 @@ class GameSession:
             self.food_eaten += 1
         self._update_enemies_turn()
         return success
+
+    def to_dict(self) -> dict:
+        return {
+            "steps_passed": self.steps_passed,
+            "enemies_killed": self.enemies_killed,
+            "food_eaten": self.food_eaten,
+            "player": self.player.to_dict(),
+            "level": self.current_level.to_dict()
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict, level_generator: LevelGenerator):
+        player = Character.from_dict(data["player"])
+        level = Level.from_dict(data["level"])
+        session = cls(player, level, level_generator)
+        session.steps_passed = data["steps_passed"]
+        session.enemies_killed = data["enemies_killed"]
+        session.food_eaten = data["food_eaten"]
+        return session
