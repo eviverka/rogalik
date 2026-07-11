@@ -1,6 +1,6 @@
 import random
 
-from entities import *
+from domain.entities import *
 
 class Room:
     def __init__(self, start_x: int, start_y: int, width: int, height: int):

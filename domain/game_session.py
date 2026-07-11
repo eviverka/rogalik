@@ -1,8 +1,8 @@
 import random
 
 from collections import deque
-from entities import *
-from map import *
+from domain.entities import *
+from domain.map import *
 
 class GameSession:
     def __init__(self, player: Character, current_level: Level, level_generator: LevelGenerator):
@@ -217,4 +217,3 @@ class GameSession:
             self.food_eaten += 1
         self._update_enemies_turn()
         return success
-            
