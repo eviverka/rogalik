@@ -14,6 +14,7 @@ class GameSession:
         self.food_eaten: int = 0
         self.is_game_over = False
         self.is_victory = False
+        self.current_level.update_visibility(self.player)
 
     def try_move_player(self, dx: int = 0, dy: int = 0):
         new_x = self.player.x + dx
@@ -52,8 +53,9 @@ class GameSession:
                 self.current_level = new_level
                 self.player.x = px
                 self.player.y = py
+                self.current_level.update_visibility(self.player)
                 return
-
+        self.current_level.update_visibility(self.player)
         self._update_enemies_turn()
 
     def process_combat(self, attacker: Creature, defender: Creature):
@@ -117,6 +119,7 @@ class GameSession:
                 nx, ny = self.make_random_move(enemy)
                 enemy.x = nx
                 enemy.y = ny
+        self.current_level.update_visibility(self.player)
 
     def get_next_step(self, enemy: Enemy) -> tuple [int, int]:
         queue = deque([(enemy.x, enemy.y)])

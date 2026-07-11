@@ -40,12 +40,46 @@ class Level:
         self.items: list[Item] = []
         self.exit_x: int = 0
         self.exit_y: int = 0
+        self.discovered_cells: set[tuple[int,int]] = set()
 
     def is_walkable(self, x: int, y: int) -> bool:
         return any(room.has_point(x, y) for room in self.rooms) or any(corridor.has_point(x, y) for corridor in self.corridors)
     
     def is_exit(self, x: int, y: int) -> bool:
         return self.exit_x == x and self.exit_y == y
+    
+    def get_line(self, x1: int, y1: int, x2: int, y2: int) -> list[tuple[int, int]]:
+        points = []
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        dir_x = 1 if x1 < x2 else -1
+        dir_y = 1 if y1 < y2 else -1
+        err = dx - dy
+
+        while True:
+            points.append((x1, y1))
+            if x1 == x2 and y1 == y2:
+                break
+            e2 = 2 * err
+            if e2 > -dy:
+                err -= dy
+                x1 += dir_x
+            if e2 < dx:
+                err += dx
+                y1 += dir_y
+                
+        return points
+
+    def update_visibility(self, player: Character, R: int = 7):
+        for ty in range(player.y - R, player.y + R + 1):
+            for tx in range(player.x - R, player.x + R + 1):
+                if ty == player.y - R or ty == player.y + R or tx == player.x - R or tx == player.x + R:
+                    line = self.get_line(player.x, player.y, tx, ty)
+                    for lx, ly in line:
+                        self.discovered_cells.add((lx, ly))
+                        if not self.is_walkable(lx, ly):
+                            break
+
 
 class LevelGenerator:
     def __init__(self, map_width: int = 80, map_height: int = 24):
