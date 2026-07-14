@@ -2,6 +2,29 @@ import random
 
 from domain.entities import *
 
+ITEMS_DATABASE = {
+    "food": [
+        {"name": "Спелое Яблоко (лечение: +4)", "health_bonus": 4},
+        {"name": "Краюха Хлеба (лечение +6)", "health_bonus": 6},
+        {"name": "Армейский Рацион (лечение +10)", "health_bonus": 10}
+    ],
+    "elixirs": [
+        {"name": "Малое Зелье Лечения (лечение +8)", "health_bonus": 8},
+        {"name": "Эликсир Огра (сила +2, макс. здоровье +2, лечение +5)", "strength_bonus": 2, "max_health_bonus": 5, "health_bonus": 5},
+        {"name": "Зелье Кошачьей Грации (ловкость +3)", "dexterity_bonus": 3}
+    ],
+    "scrolls": [
+        {"name": "Свиток Мудрости (макс. здоровье +3, лечение +3)", "max_health_bonus": 3, "health_bonus": 3},
+        {"name": "Свиток Заточки Оружия (сила +1)", "strength_bonus": 1},
+        {"name": "Древний Манускрипт (сила +2, ловкость +2)", "strength_bonus": 2, "dexterity_bonus": 2}
+    ],
+    "weapons": [
+        {"name": "Ржавый Кинжал (+1)", "strength_bonus": 1},
+        {"name": "Железный Короткий Меч (+3)", "strength_bonus": 3},
+        {"name": "Стальной Двуручник (+5)", "strength_bonus": 5}
+    ]
+}
+
 class Room:
     def __init__(self, start_x: int, start_y: int, width: int, height: int):
         self.x = start_x
@@ -13,8 +36,8 @@ class Room:
         right_border = self.x + self.width
         bottom_border = self.y + self.height
 
-        is_inside_x = self.x <= check_x < right_border
-        is_inside_y = self.y <= check_y < bottom_border
+        is_inside_x = self.x + 1 <= check_x < right_border - 1
+        is_inside_y = self.y + 1 <= check_y < bottom_border - 1
         is_inside = is_inside_x and is_inside_y
 
         return is_inside
@@ -32,7 +55,7 @@ class Corridor:
         return is_inside
     
 class Level:
-    def __init__(self, level_index: int):
+    def __init__(self, level_index: int, level_width: int, level_height: int):
         self.index = level_index
         self.rooms: list[Room] = []
         self.corridors: list[Corridor] = []
@@ -41,6 +64,8 @@ class Level:
         self.exit_x: int = 0
         self.exit_y: int = 0
         self.discovered_cells: set[tuple[int,int]] = set()
+        self.width = level_width
+        self.height = level_height
 
     def is_walkable(self, x: int, y: int) -> bool:
         return any(room.has_point(x, y) for room in self.rooms) or any(corridor.has_point(x, y) for corridor in self.corridors)
@@ -85,7 +110,9 @@ class Level:
             "index": self.index,
             "exit_x": self.exit_x,
             "exit_y": self.exit_y,
-            "discovered_cells": [list(self.discovered_cells)],
+            "width": self.width,
+            "height": self.height,
+            "discovered_cells": [list(cell) for cell in self.discovered_cells],
             "enemies": [enemy.to_dict() for enemy in self.enemies],
             "items": [item.to_dict() for item in self.items],
             "rooms": [(room.x, room.y, room.width, room.height) for room in self.rooms],
@@ -94,7 +121,7 @@ class Level:
     
     @classmethod
     def from_dict(cls, data: dict):
-        level = cls(data["index"])
+        level = cls(data["index"], data["width"], data["height"])
         level.exit_x = data["exit_x"]
         level.exit_y = data["exit_y"]
         level.discovered_cells = {tuple(cell) for cell in data["discovered_cells"]}
@@ -193,9 +220,65 @@ class LevelGenerator:
         level.exit_y = random.randint(end_room.y + 1, end_room.y + end_room.height - 2)
         return player_start_x, player_start_y
     
+    def spawn_items(self, level: Level):
+        for _ in range(random.randint(3, 6)):
+            room = random.choice(level.rooms)
+            ix = random.randint(room.x + 1, room.x + room.width - 2)
+            iy = random.randint(room.y + 1, room.y + room.height - 2)
+            
+            while level.is_exit(ix, iy):
+                ix = random.randint(room.x + 1, room.x + room.width - 2)
+                iy = random.randint(room.y + 1, room.y + room.height - 2)
+                
+            category = random.choice(["treasure", "food", "elixirs", "scrolls", "weapons"])
+            
+            if category == "treasure":
+                item = Item(ix, iy, "treasure", "Золото", cost=random.randint(15, 60))
+            else:
+                template = random.choice(ITEMS_DATABASE[category])
+                
+                item = Item(
+                    x=ix, y=iy,
+                    item_type=category,
+                    name=template["name"],
+                    health_bonus=template.get("health_bonus", 0),
+                    max_health_bonus=template.get("max_health_bonus", 0),
+                    strength_bonus=template.get("strength_bonus", 0),
+                    dexterity_bonus=template.get("dexterity_bonus", 0),
+                    cost=0
+                )
+                
+            level.items.append(item)
+
+    
+    def spawn_enemies(self, level: Level):
+        max_enemies = 6
+        if 5 <= level.index < 12:
+            max_enemies = 9
+        if 12 <= level.index:
+            max_enemies = 13
+        for _ in range(random.randint(3, max_enemies)):
+            room = random.choice(level.rooms)
+            enemy_pool = set()
+            enemy_pool.update(["zombie", "ghost"])
+            ex = random.randint(room.x + 1, room.x + room.width - 2)
+            ey = random.randint(room.y + 1, room.y + room.height - 2)
+            while level.is_exit(ex, ey):
+                ex = random.randint(room.x + 1, room.x + room.width - 2)
+                ey = random.randint(room.y + 1, room.y + room.height - 2)
+            if 5 <= level.index < 12:
+                enemy_pool.update(["vampire", "snake_mage"])
+            if 12 <= level.index:
+                enemy_pool.add("ogre")
+            enemy = Enemy(ex, ey, random.choice(list(enemy_pool)))
+            level.enemies.append(enemy)
+
+
     def build_level(self, level_index: int) -> tuple[Level, int, int]:
-        level = Level(level_index)
+        level = Level(level_index, self.map_width, self.map_height)
         self.generate_rooms(level)
         self.generate_corridors(level)
         player_x, player_y = self.place_start_and_exit(level)
+        self.spawn_enemies(level)
+        self.spawn_items(level)
         return level, player_x, player_y

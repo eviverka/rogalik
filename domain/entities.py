@@ -160,9 +160,9 @@ class Enemy(Creature):
         match enemy_type:
             case "zombie":
                 self.max_health = 30
-                self.strength = 5
+                self.strength = 3
                 self.dexterity = 2
-                self.hostility = 3
+                self.hostility = 4
             case "vampire":
                 self.max_health = 25
                 self.strength = 4
@@ -173,7 +173,7 @@ class Enemy(Creature):
                 self.max_health = 10
                 self.strength = 2
                 self.dexterity = 7
-                self.hostility = 2
+                self.hostility = 5
                 self.is_invisible = False
             case "ogre":
                 self.max_health = 45

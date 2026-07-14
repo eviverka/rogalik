@@ -88,6 +88,7 @@ class GameSession:
         if defender.health <= 0:
             if isinstance(defender, Enemy):
                 self.current_level.enemies.remove(defender)
+                self.enemies_killed += 1
             elif isinstance(defender, Character):
                 self.is_game_over = True
 

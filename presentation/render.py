@@ -12,13 +12,14 @@ class GameRenderer:
         curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
         curses.init_pair(4, 8, 8)
         curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_BLACK)
+        curses.init_pair(6, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     
     def render_level(self, stdscr: curses.window, level: Level, player: Character):
         stdscr.clear()
         self.render_room(stdscr, level)
         self.render_coridors_and_exits(stdscr, level)
         self.render_entities(stdscr, level, player)
-        self.render_hud(stdscr, level, player)
+        self.render_hud(stdscr, level, player, level.height+1)
         
 
     def render_room(self, stdscr: curses.window, level: Level):
@@ -44,11 +45,30 @@ class GameRenderer:
         for corridor in level.corridors:
             for x, y in corridor.points:
                 if (x,y) in level.discovered_cells:
-                    stdscr.addch(y, x, ' ', curses.color_pair(4))
+                    is_inside_any_room = any (room.has_point(x,y) for room in level.rooms)
+                    if not is_inside_any_room:
+                        stdscr.addch(y, x, ' ', curses.color_pair(4))
         if (level.exit_x, level.exit_y) in level.discovered_cells:
-            stdscr.addch(level.exit_y, level.exit_x, '>')
+            stdscr.addch(level.exit_y, level.exit_x, '>', curses.color_pair(6))
     
     def render_entities(self, stdscr: curses.window, level: Level, player: Character, R: int = 7):
+
+        for item in level.items:
+            distance = abs(item.x - player.x) + abs(item.y - player.y)
+            if (item.x, item.y) in level.discovered_cells and distance <= R:
+                match item.item_type:
+                    case "treasure":
+                        stdscr.addch(item.y, item.x, '*', curses.color_pair(3))
+                    case "food":
+                        stdscr.addch(item.y, item.x, '%', curses.color_pair(5))
+                    case "elixirs":
+                        stdscr.addch(item.y, item.x, '!', curses.color_pair(5))
+                    case "scrolls":
+                        stdscr.addch(item.y, item.x, '?', curses.color_pair(5))
+                    case "weapons":
+                        stdscr.addch(item.y, item.x, ')', curses.color_pair(5))
+
+
         for enemy in level.enemies:
             distance = abs(enemy.x - player.x) + abs(enemy.y - player.y)
             if (enemy.x, enemy.y) in level.discovered_cells and distance <= R:
