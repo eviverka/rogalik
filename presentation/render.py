@@ -115,9 +115,9 @@ class GameRenderer:
             weapon_name = "Безоружен"
 
         keys_hud = ""
-        if "red_key" in player.keys: keys_hud += "[К]"
-        if "yellow_key" in player.keys: keys_hud += "[Ж]"
-        if "blue_key" in player.keys: keys_hud += "[С]"
+        if "red_key" in player.keys: keys_hud += "[R]"
+        if "yellow_key" in player.keys: keys_hud += "[Y]"
+        if "blue_key" in player.keys: keys_hud += "[B]"
         if not keys_hud: keys_hud = "Нет"
 
         hud_text = (

@@ -60,6 +60,7 @@ class GameSession:
                 self.current_level = new_level
                 self.player.x = px
                 self.player.y = py
+                self.player.keys.clear()
                 self.current_level.update_visibility(self.player)
                 return
         self.current_level.update_visibility(self.player)

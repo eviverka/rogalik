@@ -94,12 +94,17 @@ class Character(Creature):
             case "scrolls":
                 self.max_health += item.max_health_bonus
                 self.health += item.max_health_bonus
+                self.health += item.health_bonus
+                self.health = min(self.max_health, self.health)
                 self.strength += item.strength_bonus
                 self.dexterity += item.dexterity_bonus
                 return True, None
             case "elixirs":
                 self.max_health += item.max_health_bonus
                 self.health += item.max_health_bonus
+                self.health += item.health_bonus
+                if self.health > self.max_health:
+                    self.health = self.max_health
                 self.strength += item.strength_bonus
                 self.dexterity += item.dexterity_bonus
                 return True, None

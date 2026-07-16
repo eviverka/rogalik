@@ -58,5 +58,7 @@ def game_loop(stdscr: curses.window):
             case 'q':
                 save_manager.save_game(session.to_dict())
                 break
+    if session.is_game_over:
+        save_manager.delete_save()
     scoreboard = ScoreboardManager()
     scoreboard.add_score(player_name, session)

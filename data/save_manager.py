@@ -55,3 +55,12 @@ class SaveManager:
                 return json.load(file)
         else:
             return None
+        
+    def delete_save(self) -> bool:
+        try:
+            if os.path.exists(self.savefile_path):
+                os.remove(self.savefile_path)
+                return True
+            return False
+        except Exception:
+            return False

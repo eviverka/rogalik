@@ -170,6 +170,7 @@ class LevelGenerator:
         queue.append((start_x, start_y))
         visited = set()
         collected_keys = set()
+        exit_reached = False
         waiting_doors = {
             "red": [],
             "yellow": [],
@@ -178,7 +179,7 @@ class LevelGenerator:
         while queue:
             cx, cy = queue.pop(0)
             if level.is_exit(cx, cy):
-                return True
+                exit_reached = True
             for item in level.items:
                 if cx == item.x and cy == item.y and item.item_type == "key":
                     collected_keys.add(item.name)
@@ -203,7 +204,14 @@ class LevelGenerator:
                 else:
                     visited.add(neighbor)
                     queue.append(neighbor)
-        return False
+        
+        all_doors_opened = (
+            len(waiting_doors["red"]) == 0 and 
+            len(waiting_doors["yellow"]) == 0 and 
+            len(waiting_doors["blue"]) == 0
+        )
+
+        return exit_reached and all_doors_opened
 
     def generate_rooms(self, level: Level):
         for row in range(3):
@@ -338,30 +346,30 @@ class LevelGenerator:
 
     def place_doors_and_keys(self, level: Level, player_x: int, player_y: int):
         colors = ("red", "yellow", "blue")
-        all_corridor_points = set()
         valid_door_spots = []
-
-        for corridor in level.corridors:
-            all_corridor_points.update(corridor.points)
-
-        for x,y in all_corridor_points:
-            if x == player_x and y == player_y:
-                continue
-
-            for room in level.rooms:
-                is_on_wall_x = (x == room.x or x == room.x + room.width - 1) and (room.y <= y < room.y + room.height)
-                is_on_wall_y = (y == room.y or y == room.y + room.height - 1) and (room.x <= x < room.x + room.width)
-
-                if is_on_wall_x or is_on_wall_y:
-                    valid_door_spots.append((x,y))
-                    break
         
+        for corridor in level.corridors:
+            for room in level.rooms:
+                for x, y in corridor.points:
+                    if x == player_x and y == player_y:
+                        continue
+                        
+                    is_on_v_wall = (x == room.x or x == room.x + room.width - 1) and (room.y < y < room.y + room.height - 1)
+                    is_on_h_wall = (y == room.y or y == room.y + room.height - 1) and (room.x < x < room.x + room.width - 1)
+                    
+                    if is_on_v_wall or is_on_h_wall:
+                        cx = room.x + room.width // 2
+                        cy = room.y + room.height // 2
+                        
+                        if x == cx or y == cy:
+                            valid_door_spots.append((x, y))
+
+        valid_door_spots = list(set(valid_door_spots))
         if len(valid_door_spots) >= 3:
             door_cells = random.sample(valid_door_spots, 3)
             for i in range(3):
                 cell = door_cells[i]
                 level.doors[cell] = colors[i]
-
         for color in colors:
             room = random.choice(level.rooms)
             kx = random.randint(room.x + 1, room.x + room.width - 2)
@@ -371,6 +379,7 @@ class LevelGenerator:
                 ky = random.randint(room.y + 1, room.y + room.height - 2)
             key_item = Item(kx, ky, "key", f"{color}_key")
             level.items.append(key_item)
+
             
     def build_level(self, level_index: int) -> tuple[Level, int, int]:
         while True:
