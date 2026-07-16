@@ -110,7 +110,7 @@ class GameRenderer:
 
     def render_hud(self, stdscr: curses.window, level: Level, player: Character, session: GameSession, line: int = 24, col: int = 0):
         if player.current_weapon is not None:
-            weapon_name = f"{player.current_weapon.name} (+{player.current_weapon.strength_bonus})"
+            weapon_name = f"{player.current_weapon.name}"
         else: 
             weapon_name = "Безоружен"
 
