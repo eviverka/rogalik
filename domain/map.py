@@ -22,6 +22,11 @@ ITEMS_DATABASE = {
         {"name": "Ржавый Кинжал (+1)", "strength_bonus": 1},
         {"name": "Железный Короткий Меч (+3)", "strength_bonus": 3},
         {"name": "Стальной Двуручник (+5)", "strength_bonus": 5}
+    ],
+    "keys": [
+        {"name": "red_key"},
+        {"name": "yellow_key"},
+        {"name": "blue_key"},
     ]
 }
 
@@ -66,6 +71,20 @@ class Level:
         self.discovered_cells: set[tuple[int,int]] = set()
         self.width = level_width
         self.height = level_height
+        self.doors: dict[tuple[int, int]: str] = {}
+    
+    def is_door_locked(self, x: int, y: int, player: Character) -> str | None:
+        current_cell = (x, y)
+
+        if current_cell in self.doors:
+            door_color = self.doors[current_cell]
+            required_key = f"{door_color}_key"
+
+            if required_key not in player.keys:
+                return door_color
+        
+        return None
+
 
     def is_walkable(self, x: int, y: int) -> bool:
         return any(room.has_point(x, y) for room in self.rooms) or any(corridor.has_point(x, y) for corridor in self.corridors)
@@ -116,7 +135,8 @@ class Level:
             "enemies": [enemy.to_dict() for enemy in self.enemies],
             "items": [item.to_dict() for item in self.items],
             "rooms": [(room.x, room.y, room.width, room.height) for room in self.rooms],
-            "corridors": [list(corridor.points) for corridor in self.corridors]
+            "corridors": [list(corridor.points) for corridor in self.corridors],
+            "doors": {f"{x},{y}": color for (x, y), color in self.doors.items()}
         }
     
     @classmethod
@@ -133,6 +153,9 @@ class Level:
         level.enemies = [Enemy.from_dict(enemy_data) for enemy_data in data["enemies"]]
         level.items = [Item.from_dict(item_data) for item_data in data["items"]]
         
+        for key_str, color in data["doors"].items():
+            x_str, y_str = key_str.split(',')
+            level.doors[(int(x_str), int(y_str))] = color
         return level
 
 class LevelGenerator:
@@ -141,6 +164,46 @@ class LevelGenerator:
         self.map_height = map_height
         self.sector_width = self.map_width // 3
         self.sector_height = self.map_height // 3
+
+    def check_level_solvability(self, level: Level, start_x: int, start_y: int) -> bool:
+        queue: list[tuple[int, int]] = []
+        queue.append((start_x, start_y))
+        visited = set()
+        collected_keys = set()
+        waiting_doors = {
+            "red": [],
+            "yellow": [],
+            "blue": []
+        }
+        while queue:
+            cx, cy = queue.pop(0)
+            if level.is_exit(cx, cy):
+                return True
+            for item in level.items:
+                if cx == item.x and cy == item.y and item.item_type == "key":
+                    collected_keys.add(item.name)
+                    key_color = item.name.split('_')[0]
+                    if waiting_doors[key_color] is not None:
+                        queue.extend(waiting_doors[key_color])
+                        waiting_doors[key_color] = []
+            for dx, dy in [(0,1), (0,-1), (1,0), (-1,0)]:
+                nx = cx + dx
+                ny = cy + dy
+                neighbor = (nx, ny)
+                if neighbor in visited or not level.is_walkable(nx, ny):
+                    continue
+                if neighbor in level.doors:
+                    door_color = level.doors[neighbor]
+                    if f"{door_color}_key" in collected_keys:
+                        visited.add(neighbor)
+                        queue.append(neighbor)
+                    else:
+                        waiting_doors[door_color].append(neighbor)
+                        visited.add(neighbor)
+                else:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+        return False
 
     def generate_rooms(self, level: Level):
         for row in range(3):
@@ -273,12 +336,53 @@ class LevelGenerator:
             enemy = Enemy(ex, ey, random.choice(list(enemy_pool)))
             level.enemies.append(enemy)
 
+    def place_doors_and_keys(self, level: Level, player_x: int, player_y: int):
+        colors = ("red", "yellow", "blue")
+        all_corridor_points = set()
+        valid_door_spots = []
+
+        for corridor in level.corridors:
+            all_corridor_points.update(corridor.points)
+
+        for x,y in all_corridor_points:
+            if x == player_x and y == player_y:
+                continue
+
+            for room in level.rooms:
+                is_on_wall_x = (x == room.x or x == room.x + room.width - 1) and (room.y <= y < room.y + room.height)
+                is_on_wall_y = (y == room.y or y == room.y + room.height - 1) and (room.x <= x < room.x + room.width)
+
+                if is_on_wall_x or is_on_wall_y:
+                    valid_door_spots.append((x,y))
+                    break
+        
+        if len(valid_door_spots) >= 3:
+            door_cells = random.sample(valid_door_spots, 3)
+            for i in range(3):
+                cell = door_cells[i]
+                level.doors[cell] = colors[i]
+
+        for color in colors:
+            room = random.choice(level.rooms)
+            kx = random.randint(room.x + 1, room.x + room.width - 2)
+            ky = random.randint(room.y + 1, room.y + room.height - 2)
+            while level.is_exit(kx, ky):
+                kx = random.randint(room.x + 1, room.x + room.width - 2)
+                ky = random.randint(room.y + 1, room.y + room.height - 2)
+            key_item = Item(kx, ky, "key", f"{color}_key")
+            level.items.append(key_item)
+            
+
 
     def build_level(self, level_index: int) -> tuple[Level, int, int]:
-        level = Level(level_index, self.map_width, self.map_height)
-        self.generate_rooms(level)
-        self.generate_corridors(level)
-        player_x, player_y = self.place_start_and_exit(level)
-        self.spawn_enemies(level)
-        self.spawn_items(level)
+        while True:
+            level = Level(level_index, self.map_width, self.map_height)
+            self.generate_rooms(level)  
+            self.generate_corridors(level)
+            player_x, player_y = self.place_start_and_exit(level)
+            self.place_doors_and_keys(level, player_x, player_y)
+            if self.check_level_solvability(level, player_x, player_y):
+                self.spawn_enemies(level)
+                self.spawn_items(level)
+                break
         return level, player_x, player_y

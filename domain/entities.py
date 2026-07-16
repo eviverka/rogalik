@@ -53,6 +53,7 @@ class Character(Creature):
     def __init__(self, start_x: int, start_y: int, max_health: int, strength: int, dexterity: int, current_weapon: Item = None, backpack = None):
         super().__init__(start_x, start_y, max_health, strength, dexterity)
         self.gold = 0
+        self.keys = set()
 
         self.current_weapon = current_weapon
         if backpack is None:
@@ -69,6 +70,9 @@ class Character(Creature):
         category = item.item_type
         if category == "treasure":
             self.gold += item.cost
+            return True
+        elif item.item_type == "key":
+            self.keys.add(item.name)
             return True
         elif len(self.backpack[category]) < 9:
             self.backpack[category].append(item)
@@ -120,7 +124,8 @@ class Character(Creature):
             "dexterity": self.dexterity,
             "gold": self.gold,
             "current_weapon": self.current_weapon.to_dict() if self.current_weapon else None,
-            "backpack": backpack_dict
+            "backpack": backpack_dict,
+            "keys": list(self.keys)
         }
     
     @classmethod
@@ -135,6 +140,7 @@ class Character(Creature):
         
         player.health = data["health"]
         player.gold = data["gold"]
+        player.keys = set(data["keys"])
 
         if data["current_weapon"] is not None:
             player.current_weapon = Item.from_dict(data["current_weapon"])

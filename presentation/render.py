@@ -2,6 +2,7 @@ import curses
 
 from domain.map import *
 from domain.entities import *
+from domain.game_session import *
 
 class GameRenderer:
     def init_screen(self, stdscr: curses.window):
@@ -13,15 +14,18 @@ class GameRenderer:
         curses.init_pair(4, 8, 8)
         curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_BLACK)
         curses.init_pair(6, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+        curses.init_pair(7, curses.COLOR_BLUE, 8)
+        curses.init_pair(8, curses.COLOR_RED, 8)
+        curses.init_pair(9, curses.COLOR_YELLOW, 8)
+        curses.init_pair(10, curses.COLOR_BLUE, curses.COLOR_BLACK)
     
-    def render_level(self, stdscr: curses.window, level: Level, player: Character):
+    def render_level(self, stdscr: curses.window, level: Level, player: Character, session: GameSession):
         stdscr.clear()
         self.render_room(stdscr, level)
         self.render_coridors_and_exits(stdscr, level)
         self.render_entities(stdscr, level, player)
-        self.render_hud(stdscr, level, player, level.height+1)
+        self.render_hud(stdscr, level, player, session, level.height+1)
         
-
     def render_room(self, stdscr: curses.window, level: Level):
         for room in level.rooms:
             for y in range(room.y + 1, room.y + room.height - 1, 1):
@@ -46,10 +50,20 @@ class GameRenderer:
             for x, y in corridor.points:
                 if (x,y) in level.discovered_cells:
                     is_inside_any_room = any (room.has_point(x,y) for room in level.rooms)
-                    if not is_inside_any_room:
+                    if not is_inside_any_room and (x, y) not in level.doors:
                         stdscr.addch(y, x, ' ', curses.color_pair(4))
+
         if (level.exit_x, level.exit_y) in level.discovered_cells:
             stdscr.addch(level.exit_y, level.exit_x, '>', curses.color_pair(6))
+
+        for (dx, dy), color in level.doors.items():
+            if (dx, dy) in level.discovered_cells:
+                if color == "red":
+                    stdscr.addch(dy, dx, 'D', curses.color_pair(8))
+                if color == "yellow":
+                    stdscr.addch(dy, dx, 'D', curses.color_pair(9))
+                if color == "blue":
+                    stdscr.addch(dy, dx, 'D', curses.color_pair(7))
     
     def render_entities(self, stdscr: curses.window, level: Level, player: Character, R: int = 7):
 
@@ -67,6 +81,14 @@ class GameRenderer:
                         stdscr.addch(item.y, item.x, '?', curses.color_pair(5))
                     case "weapons":
                         stdscr.addch(item.y, item.x, ')', curses.color_pair(5))
+                    case "key":
+                        if item.name == "red_key":
+                            stdscr.addch(item.y, item.x, 'k', curses.color_pair(2))
+                        if item.name == "yellow_key":
+                            stdscr.addch(item.y, item.x, 'k', curses.color_pair(3))
+                        if item.name == "blue_key":
+                            stdscr.addch(item.y, item.x, 'k', curses.color_pair(10))
+
 
 
         for enemy in level.enemies:
@@ -86,20 +108,30 @@ class GameRenderer:
                             stdscr.addch(enemy.y, enemy.x, 'g', curses.color_pair(5))
         stdscr.addch(player.y, player.x, '@')
 
-    def render_hud(self, stdscr: curses.window, level: Level, player: Character, line: int = 24, col: int = 0):
+    def render_hud(self, stdscr: curses.window, level: Level, player: Character, session: GameSession, line: int = 24, col: int = 0):
         if player.current_weapon is not None:
             weapon_name = f"{player.current_weapon.name} (+{player.current_weapon.strength_bonus})"
         else: 
             weapon_name = "Безоружен"
+
+        keys_hud = ""
+        if "red_key" in player.keys: keys_hud += "[К]"
+        if "yellow_key" in player.keys: keys_hud += "[Ж]"
+        if "blue_key" in player.keys: keys_hud += "[С]"
+        if not keys_hud: keys_hud = "Нет"
+
         hud_text = (
             f"Ярус: {level.index} | "
             f"HP: {player.health}/{player.max_health} | "
             f"STR: {player.strength} | "
             f"DEX: {player.dexterity} | "
             f"Оружие: {weapon_name} | "
-            f"Золото: {player.gold}"
+            f"Золото: {player.gold} | "
+            f"Ключи: {keys_hud}"
         )
         stdscr.addstr(line, col, hud_text)
+        if getattr(session, "message", ""):
+            stdscr.addstr(line + 1, col, session.message, curses.color_pair(2))
     
     def render_inventory(self, stdscr: curses.window, level: Level, player: Character, item_type: str, line: int = 15, col: int = 5) -> int:
         stdscr.clear()

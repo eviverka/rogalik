@@ -15,11 +15,17 @@ class GameSession:
         self.is_game_over = False
         self.is_victory = False
         self.current_level.update_visibility(self.player)
+        self.message: str = ""
 
     def try_move_player(self, dx: int = 0, dy: int = 0):
         new_x = self.player.x + dx
         new_y = self.player.y + dy
         if not self.current_level.is_walkable(new_x, new_y):
+            return
+        
+        door_color = self.current_level.is_door_locked(new_x, new_y, self.player)
+        if door_color:
+            self.message = f"Door locked! Required {door_color} key."
             return
         
         enemy_found = False
@@ -33,6 +39,7 @@ class GameSession:
             self._update_enemies_turn()
             return
         
+        self.message = ""
         self.player.x = new_x
         self.player.y = new_y
         self.steps_passed += 1

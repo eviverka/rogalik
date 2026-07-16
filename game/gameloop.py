@@ -26,7 +26,7 @@ def game_loop(stdscr: curses.window):
         session = GameSession(player, first_level, level_generator)
     renderer.init_screen(stdscr)
     while not session.is_game_over and not session.is_victory:
-        renderer.render_level(stdscr, session.current_level, session.player)
+        renderer.render_level(stdscr, session.current_level, session.player, session)
         stdscr.refresh()
         key_code = stdscr.getch()
         key = chr(key_code) if 0 <= key_code <= 255 else ""
@@ -60,4 +60,3 @@ def game_loop(stdscr: curses.window):
                 break
     scoreboard = ScoreboardManager()
     scoreboard.add_score(player_name, session)
-            
