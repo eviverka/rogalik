@@ -85,7 +85,6 @@ class Level:
         
         return None
 
-
     def is_walkable(self, x: int, y: int) -> bool:
         return any(room.has_point(x, y) for room in self.rooms) or any(corridor.has_point(x, y) for corridor in self.corridors)
     
@@ -276,7 +275,6 @@ class LevelGenerator:
                     new_corridor = Corridor(corridor_points)
                     level.corridors.append(new_corridor)
 
-
     def add_relation(self, graph, node_a: int, node_b: int):
         if node_b not in graph[node_a]:
             graph[node_a].append(node_b)
@@ -324,7 +322,6 @@ class LevelGenerator:
                 
             level.items.append(item)
 
-    
     def spawn_enemies(self, level: Level, modifier: float = 1.0):
         min_enemies = max(1, int(3*modifier))
         max_enemies = max(4, int(8*modifier))
@@ -386,7 +383,6 @@ class LevelGenerator:
             key_item = Item(kx, ky, "key", f"{color}_key")
             level.items.append(key_item)
 
-            
     def build_level(self, level_index: int, difficulty_modifier: float = 1.0) -> tuple[Level, int, int]:
         while True:
             level = Level(level_index, self.map_width, self.map_height)
