@@ -291,8 +291,8 @@ class LevelGenerator:
         level.exit_y = random.randint(end_room.y + 1, end_room.y + end_room.height - 2)
         return player_start_x, player_start_y
     
-    def spawn_items(self, level: Level):
-        for _ in range(random.randint(3, 6)):
+    def spawn_items(self, level: Level, modifier: float = 1.0):
+        for _ in range(random.randint(int(5 * modifier), int(9 * modifier))):
             room = random.choice(level.rooms)
             ix = random.randint(room.x + 1, room.x + room.width - 2)
             iy = random.randint(room.y + 1, room.y + room.height - 2)
@@ -301,7 +301,10 @@ class LevelGenerator:
                 ix = random.randint(room.x + 1, room.x + room.width - 2)
                 iy = random.randint(room.y + 1, room.y + room.height - 2)
                 
-            category = random.choice(["treasure", "food", "elixirs", "scrolls", "weapons"])
+            if modifier < 1.0:
+                category = random.choice(["food", "elixirs", "treasure"])
+            else:
+                category = random.choice(["treasure", "food", "elixirs", "scrolls", "weapons", "treasure", "treasure"])
             
             if category == "treasure":
                 item = Item(ix, iy, "treasure", "Золото", cost=random.randint(15, 60))
@@ -322,13 +325,16 @@ class LevelGenerator:
             level.items.append(item)
 
     
-    def spawn_enemies(self, level: Level):
-        max_enemies = 6
+    def spawn_enemies(self, level: Level, modifier: float = 1.0):
+        min_enemies = max(1, int(3*modifier))
+        max_enemies = max(4, int(8*modifier))
         if 5 <= level.index < 12:
-            max_enemies = 9
+            min_enemies = max(2, int(4*modifier))
+            max_enemies = max(9, int(12*modifier))
         if 12 <= level.index:
-            max_enemies = 13
-        for _ in range(random.randint(3, max_enemies)):
+            min_enemies = max(3, int(5*modifier))
+            max_enemies = max(8, int(14*modifier))
+        for _ in range(random.randint(min_enemies, max_enemies)):
             room = random.choice(level.rooms)
             enemy_pool = set()
             enemy_pool.update(["zombie", "ghost"])
@@ -381,7 +387,7 @@ class LevelGenerator:
             level.items.append(key_item)
 
             
-    def build_level(self, level_index: int) -> tuple[Level, int, int]:
+    def build_level(self, level_index: int, difficulty_modifier: float = 1.0) -> tuple[Level, int, int]:
         while True:
             level = Level(level_index, self.map_width, self.map_height)
             self.generate_rooms(level)  
@@ -389,7 +395,7 @@ class LevelGenerator:
             player_x, player_y = self.place_start_and_exit(level)
             self.place_doors_and_keys(level, player_x, player_y)
             if self.check_level_solvability(level, player_x, player_y):
-                self.spawn_enemies(level)
-                self.spawn_items(level)
+                self.spawn_enemies(level, difficulty_modifier)
+                self.spawn_items(level, difficulty_modifier)
                 break
         return level, player_x, player_y

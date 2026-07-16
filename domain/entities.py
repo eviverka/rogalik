@@ -103,8 +103,7 @@ class Character(Creature):
                 self.max_health += item.max_health_bonus
                 self.health += item.max_health_bonus
                 self.health += item.health_bonus
-                if self.health > self.max_health:
-                    self.health = self.max_health
+                self.health = min(self.max_health, self.health)
                 self.strength += item.strength_bonus
                 self.dexterity += item.dexterity_bonus
                 return True, None

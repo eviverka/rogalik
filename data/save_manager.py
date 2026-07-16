@@ -58,9 +58,16 @@ class SaveManager:
         
     def delete_save(self) -> bool:
         try:
-            if os.path.exists(self.savefile_path):
-                os.remove(self.savefile_path)
-                return True
-            return False
+            if not self.directory_name or not os.path.exists(self.directory_name):
+                return False
+                
+            deleted_any = False
+            for filename in os.listdir(self.directory_name):
+                if filename.startswith("gamesave_") and filename.endswith(".json"):
+                    full_path = os.path.join(self.directory_name, filename)
+                    os.remove(full_path)
+                    deleted_any = True
+                    
+            return deleted_any
         except Exception:
             return False

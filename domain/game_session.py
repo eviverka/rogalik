@@ -12,6 +12,8 @@ class GameSession:
         self.steps_passed: int = 0
         self.enemies_killed: int = 0
         self.food_eaten: int = 0
+        self.total_damage_taken: int = 0
+        self.low_health_turns: int = 0
         self.is_game_over = False
         self.is_victory = False
         self.current_level.update_visibility(self.player)
@@ -56,7 +58,8 @@ class GameSession:
                 return
             else:
                 next_index = self.current_level.index + 1
-                new_level, px, py = self.level_generator.build_level(next_index)
+                diff_mod = self.calculate_difficulty_modifier()
+                new_level, px, py = self.level_generator.build_level(next_index, diff_mod)
                 self.current_level = new_level
                 self.player.x = px
                 self.player.y = py
@@ -83,6 +86,8 @@ class GameSession:
             damage += attacker.current_weapon.strength_bonus
 
         defender.health -= damage
+        if isinstance(defender, Character):
+            self.total_damage_taken += damage
 
         if isinstance(attacker, Enemy):
             if attacker.enemy_type == "vampire":
@@ -128,6 +133,8 @@ class GameSession:
                 nx, ny = self.make_random_move(enemy)
                 enemy.x = nx
                 enemy.y = ny
+        if self.player.health <= (self.player.max_health * 0.3):
+            self.low_health_turns += 1
         self.current_level.update_visibility(self.player)
 
     def get_next_step(self, enemy: Enemy) -> tuple [int, int]:
@@ -196,7 +203,6 @@ class GameSession:
 
         return enemy.x, enemy.y
 
-
     def get_free_cell_around(self, start_x: int, start_y: int) -> tuple [int, int]:
         directions = [(0,1),(1,0),(0,-1),(-1,0)]
         for dx,dy in directions:
@@ -226,6 +232,22 @@ class GameSession:
             self.food_eaten += 1
         self._update_enemies_turn()
         return success
+
+    def calculate_difficulty_modifier(self) -> float:
+        modifier = 1.0
+        
+        if self.total_damage_taken > self.player.max_health or self.low_health_turns > 15:
+            modifier = 0.7
+            self.message = "Режиссёр: Похоже, вам тяжело. Помощь близко..."
+            
+        elif self.total_damage_taken < (self.player.max_health * 0.5) and self.low_health_turns < 3:
+            modifier = 1.3 
+            self.message = "Режиссёр: Слишком просто? Твари становятся злее!"
+
+        self.total_damage_taken = 0
+        self.low_health_turns = 0
+        
+        return modifier
 
     def to_dict(self) -> dict:
         return {
