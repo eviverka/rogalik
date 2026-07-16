@@ -152,7 +152,7 @@ class Level:
             level.corridors.append(Corridor(points))
         level.enemies = [Enemy.from_dict(enemy_data) for enemy_data in data["enemies"]]
         level.items = [Item.from_dict(item_data) for item_data in data["items"]]
-        
+
         for key_str, color in data["doors"].items():
             x_str, y_str = key_str.split(',')
             level.doors[(int(x_str), int(y_str))] = color
@@ -372,8 +372,6 @@ class LevelGenerator:
             key_item = Item(kx, ky, "key", f"{color}_key")
             level.items.append(key_item)
             
-
-
     def build_level(self, level_index: int) -> tuple[Level, int, int]:
         while True:
             level = Level(level_index, self.map_width, self.map_height)
