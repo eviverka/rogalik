@@ -298,11 +298,14 @@ class LevelGenerator:
             while level.is_exit(ix, iy):
                 ix = random.randint(room.x + 1, room.x + room.width - 2)
                 iy = random.randint(room.y + 1, room.y + room.height - 2)
+
+            available_categories = list(ITEMS_DATABASE.keys())
+            available_categories.append("treasure")
                 
             if modifier < 1.0:
-                category = random.choice(["food", "elixirs", "treasure"])
+                category = random.choice(["food", "elixirs", "treasure", "food", "elixirs", "food"])
             else:
-                category = random.choice(["treasure", "food", "elixirs", "scrolls", "weapons", "treasure", "treasure"])
+                category = random.choice(available_categories)
             
             if category == "treasure":
                 item = Item(ix, iy, "treasure", "Золото", cost=random.randint(15, 60))
@@ -341,9 +344,9 @@ class LevelGenerator:
                 ex = random.randint(room.x + 1, room.x + room.width - 2)
                 ey = random.randint(room.y + 1, room.y + room.height - 2)
             if 5 <= level.index < 12:
-                enemy_pool.update(["vampire", "snake_mage"])
+                enemy_pool.update(["vampire", "snake_mage", "mimic"])
             if 12 <= level.index:
-                enemy_pool.add("ogre")
+                enemy_pool.update(["vampire", "snake_mage", "mimic", "ogre"])
             enemy = Enemy(ex, ey, random.choice(list(enemy_pool)))
             level.enemies.append(enemy)
 

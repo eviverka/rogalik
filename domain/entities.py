@@ -1,3 +1,6 @@
+import random
+from domain.map import ITEMS_DATABASE
+
 class Creature:
     def __init__(self, start_x: int = 0, start_y: int = 0, max_health: int = 10, strength: int = 5, dexterity: int = 5):
         if max_health<=0:
@@ -166,6 +169,8 @@ class Enemy(Creature):
         super().__init__(start_x, start_y)
 
         self.enemy_type = enemy_type
+        available_items = list(ITEMS_DATABASE.keys())
+        available_items.remove("keys")
 
         match enemy_type:
             case "zombie":
@@ -196,6 +201,13 @@ class Enemy(Creature):
                 self.strength = 3
                 self.dexterity = 10
                 self.hostility = 7
+            case "mimic":
+                self.max_health = 40
+                self.strength = 2
+                self.dexterity = 12
+                self.hostility = 2
+                self.is_disguised = True
+                self.is_disguised_as = random.choice(available_items)
             case _:
                 self.hostility = 1
 
@@ -210,6 +222,8 @@ class Enemy(Creature):
             "max_health": self.max_health,
             "is_first_hit": getattr(self, "is_first_hit", False),
             "is_resting": getattr(self, "is_resting", False),
+            "is_disguised": getattr(self, "is_disguised", False),
+            "is_disguised_as": getattr(self, "is_disguised_as", ""),
             "is_invisible": getattr(self, "is_invisible", False)
         }
     
@@ -218,7 +232,13 @@ class Enemy(Creature):
         enemy = cls(data["x"], data["y"], data["enemy_type"])
         enemy.health = data["health"]
         enemy.max_health = data["max_health"]
-        setattr(enemy, "is_first_hit", data["is_first_hit"])
-        setattr(enemy, "is_resting", data["is_resting"])
-        setattr(enemy, "is_invisible", data["is_invisible"])
+
+        if "is_first_hit" in data: enemy.is_first_hit = data["is_first_hit"]
+        if "is_resting" in data: enemy.is_resting = data["is_resting"]
+        if "is_invisible" in data: enemy.is_invisible = data["is_invisible"]
+        
+        if "is_disguised" in data: enemy.is_disguised = data["is_disguised"]
+        if "is_disguised_as" in data: enemy.is_disguised_as = data["is_disguised_as"]
+        
         return enemy
+    

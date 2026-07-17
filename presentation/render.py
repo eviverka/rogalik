@@ -66,29 +66,30 @@ class GameRenderer:
                     stdscr.addch(dy, dx, 'D', curses.color_pair(7))
     
     def render_entities(self, stdscr: curses.window, level: Level, player: Character, R: int = 7):
+        def draw_item(y: int, x: int, item_type: str, name: str = ""):
+            match item_type:
+                case "treasure":
+                    stdscr.addch(y, x, '*', curses.color_pair(3))
+                case "food":
+                    stdscr.addch(y, x, '%', curses.color_pair(5))
+                case "elixirs":
+                    stdscr.addch(y, x, '!', curses.color_pair(5))
+                case "scrolls":
+                    stdscr.addch(y, x, '?', curses.color_pair(5))
+                case "weapons":
+                    stdscr.addch(y, x, ')', curses.color_pair(5))
+                case "key":
+                    if name == "red_key":
+                        stdscr.addch(y, x, 'k', curses.color_pair(2))
+                    if name == "yellow_key":
+                        stdscr.addch(y, x, 'k', curses.color_pair(3))
+                    if name == "blue_key":
+                        stdscr.addch(y, x, 'k', curses.color_pair(10))
 
         for item in level.items:
             distance = abs(item.x - player.x) + abs(item.y - player.y)
             if (item.x, item.y) in level.discovered_cells and distance <= R:
-                match item.item_type:
-                    case "treasure":
-                        stdscr.addch(item.y, item.x, '*', curses.color_pair(3))
-                    case "food":
-                        stdscr.addch(item.y, item.x, '%', curses.color_pair(5))
-                    case "elixirs":
-                        stdscr.addch(item.y, item.x, '!', curses.color_pair(5))
-                    case "scrolls":
-                        stdscr.addch(item.y, item.x, '?', curses.color_pair(5))
-                    case "weapons":
-                        stdscr.addch(item.y, item.x, ')', curses.color_pair(5))
-                    case "key":
-                        if item.name == "red_key":
-                            stdscr.addch(item.y, item.x, 'k', curses.color_pair(2))
-                        if item.name == "yellow_key":
-                            stdscr.addch(item.y, item.x, 'k', curses.color_pair(3))
-                        if item.name == "blue_key":
-                            stdscr.addch(item.y, item.x, 'k', curses.color_pair(10))
-
+                draw_item(item.y, item.x, item.item_type, item.name)
 
 
         for enemy in level.enemies:
@@ -106,6 +107,11 @@ class GameRenderer:
                     case "ghost":
                         if not enemy.is_invisible:
                             stdscr.addch(enemy.y, enemy.x, 'g', curses.color_pair(5))
+                    case "mimic":
+                        if not enemy.is_disguised:
+                            stdscr.addch(enemy.y, enemy.x, 'm', curses.color_pair(5))
+                        else:
+                            draw_item(enemy.y, enemy.x, enemy.is_disguised_as)
         stdscr.addch(player.y, player.x, '@')
 
     def render_hud(self, stdscr: curses.window, level: Level, player: Character, session: GameSession, line: int = 24, col: int = 0):

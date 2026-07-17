@@ -30,14 +30,19 @@ class GameSession:
             self.message = f"Door locked! Required {door_color} key."
             return
         
-        enemy_found = False
+        target_enemy = None
         for enemy in self.current_level.enemies:
             if enemy.x == new_x and enemy.y == new_y:
-                enemy_found = True
+                target_enemy = enemy
                 break
         
-        if enemy_found:
-            self.process_combat(self.player, enemy)
+        if target_enemy is not None:
+            if target_enemy.enemy_type == "mimic" and getattr(target_enemy, "is_disguised", False):
+                target_enemy.is_disguised = False
+                self.message = "Это ловушка! Перед вами Мимик!"
+            else:
+                self.message = ""
+            self.process_combat(self.player, target_enemy)
             self._update_enemies_turn()
             return
         
@@ -45,6 +50,7 @@ class GameSession:
         self.player.x = new_x
         self.player.y = new_y
         self.steps_passed += 1
+        
         for item in self.current_level.items:
             if item.x == self.player.x and item.y == self.player.y:
                 success = self.player.pick_up_item(item)
@@ -110,8 +116,11 @@ class GameSession:
             if self.player.health <= 0:
                 break
 
-            if enemy.enemy_type == "ogre" and enemy.is_resting == True:
+            if enemy.enemy_type == "ogre" and getattr(enemy, "is_resting", False):
                 enemy.is_resting = False
+                continue
+
+            if enemy.enemy_type == "mimic" and getattr(enemy, "is_disguised", False):
                 continue
 
             distance = abs(enemy.x - self.player.x) + abs(enemy.y - self.player.y)
