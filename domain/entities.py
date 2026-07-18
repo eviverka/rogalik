@@ -1,5 +1,6 @@
 import random
 from domain.map import ITEMS_DATABASE
+from config import *
 
 class Creature:
     def __init__(self, start_x: int = 0, start_y: int = 0, max_health: int = 10, strength: int = 5, dexterity: int = 5):
@@ -77,7 +78,7 @@ class Character(Creature):
         elif item.item_type == "key":
             self.keys.add(item.name)
             return True
-        elif len(self.backpack[category]) < 9:
+        elif len(self.backpack[category]) < MAX_BACKPACK_SLOT_CAPACITY:
             self.backpack[category].append(item)
             return True
         else:
@@ -167,50 +168,28 @@ class Character(Creature):
 class Enemy(Creature):
     def __init__(self, start_x: int, start_y: int, enemy_type: str):
         super().__init__(start_x, start_y)
-
         self.enemy_type = enemy_type
-        available_items = list(ITEMS_DATABASE.keys())
-        available_items.remove("keys")
-
-        match enemy_type:
-            case "zombie":
-                self.max_health = 30
-                self.strength = 3
-                self.dexterity = 2
-                self.hostility = 4
-            case "vampire":
-                self.max_health = 25
-                self.strength = 4
-                self.dexterity = 8
-                self.hostility = 6
-                self.is_first_hit: bool =  True
-            case "ghost":
-                self.max_health = 10
-                self.strength = 2
-                self.dexterity = 7
-                self.hostility = 5
-                self.is_invisible = False
-            case "ogre":
-                self.max_health = 45
-                self.strength = 10
-                self.dexterity = 3
-                self.hostility = 4
-                self.is_resting: bool = False
-            case "snake_mage":
-                self.max_health = 15
-                self.strength = 3
-                self.dexterity = 10
-                self.hostility = 7
-            case "mimic":
-                self.max_health = 40
-                self.strength = 2
-                self.dexterity = 12
-                self.hostility = 2
-                self.is_disguised = True
-                self.is_disguised_as = random.choice(available_items)
-            case _:
-                self.hostility = 1
-
+        
+        stats = ENEMY_BALANCING.get(enemy_type, {"max_health": 10, "strength": 2, "dexterity": 2, "hostility": 1})
+        
+        self.max_health = stats["max_health"]
+        self.strength = stats["strength"]
+        self.dexterity = stats["dexterity"]
+        self.hostility = stats["hostility"]
+        
+        if enemy_type == "vampire":
+            self.is_first_hit = True
+        elif enemy_type == "ghost":
+            self.is_invisible = False
+        elif enemy_type == "ogre":
+            self.is_resting = False
+        elif enemy_type == "mimic":
+            self.is_disguised = True
+            available_items = list(ITEMS_DATABASE.keys())
+            if "keys" in available_items:
+                available_items.remove("keys")
+            self.is_disguised_as = random.choice(available_items)
+            
         self.health = self.max_health
     
     def to_dict(self) -> dict:

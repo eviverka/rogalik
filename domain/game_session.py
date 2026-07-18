@@ -3,6 +3,7 @@ import random
 from collections import deque
 from domain.entities import *
 from domain.map import *
+from config import *
 
 class GameSession:
     def __init__(self, player: Character, current_level: Level, level_generator: LevelGenerator):
@@ -19,20 +20,21 @@ class GameSession:
         self.current_level.update_visibility(self.player)
         self.message: str = ""
 
-    def try_move_player(self, dx: int = 0, dy: int = 0):
-        new_x = self.player.x + dx
-        new_y = self.player.y + dy
-        if not self.current_level.is_walkable(new_x, new_y):
-            return
+    def _can_move_to(self, x: int, y: int) -> bool:
+        if not self.current_level.is_walkable(x, y):
+            return False
         
-        door_color = self.current_level.is_door_locked(new_x, new_y, self.player)
+        door_color = self.current_level.is_door_locked(x, y, self.player)
         if door_color:
             self.message = f"Door locked! Required {door_color} key."
-            return
+            return False
         
+        return True
+    
+    def _met_enemy(self, x: int, y: int) -> bool:
         target_enemy = None
         for enemy in self.current_level.enemies:
-            if enemy.x == new_x and enemy.y == new_y:
+            if enemy.x == x and enemy.y == y:
                 target_enemy = enemy
                 break
         
@@ -44,24 +46,23 @@ class GameSession:
                 self.message = ""
             self.process_combat(self.player, target_enemy)
             self._update_enemies_turn()
-            return
+            return True
+        else: 
+            return False
         
-        self.message = ""
-        self.player.x = new_x
-        self.player.y = new_y
-        self.steps_passed += 1
-        
+    def _check_item_pickup(self):
         for item in self.current_level.items:
             if item.x == self.player.x and item.y == self.player.y:
                 success = self.player.pick_up_item(item)
                 if success:
                     self.current_level.items.remove(item)
                     break
-
+    
+    def _check_exit(self) -> bool:
         if self.current_level.is_exit(self.player.x, self.player.y):
             if self.current_level.index == 21:
                 self.is_victory = True
-                return
+                return True
             else:
                 next_index = self.current_level.index + 1
                 diff_mod = self.calculate_difficulty_modifier()
@@ -71,22 +72,43 @@ class GameSession:
                 self.player.y = py
                 self.player.keys.clear()
                 self.current_level.update_visibility(self.player)
-                return
+                return True
+        else:
+            return False
+
+    def try_move_player(self, dx: int = 0, dy: int = 0):
+        new_x = self.player.x + dx
+        new_y = self.player.y + dy
+
+        if not self._can_move_to(new_x, new_y):
+            return
+        
+        if self._met_enemy(new_x, new_y):
+            return
+        
+        self.message = ""
+        self.player.x = new_x
+        self.player.y = new_y
+        self.steps_passed += 1
+
+        self._check_item_pickup()
+        if self._check_exit():
+            return
         self.current_level.update_visibility(self.player)
         self._update_enemies_turn()
 
-    def process_combat(self, attacker: Creature, defender: Creature):
-        damage = attacker.strength
-
+    def _is_attack_blocked(self, defender: Creature):
         if isinstance(defender, Enemy):
             if defender.enemy_type == "vampire" and defender.is_first_hit:
                 defender.is_first_hit = False
-                return
-
-        hit_chance = 70 + (attacker.dexterity * 2) - (defender.dexterity * 2)
-        hit_chance = max(3, min(98, hit_chance))
-        if random.randint(1, 100) > hit_chance:
-            return
+                return True
+            else: 
+                return False
+        else:
+            return False
+    
+    def _apply_attack(self, attacker: Creature, defender: Creature):
+        damage = attacker.strength
 
         if isinstance(attacker, Character) and attacker.current_weapon is not None:
             damage += attacker.current_weapon.strength_bonus
@@ -103,7 +125,16 @@ class GameSession:
                     self.player.max_health = 1
             if attacker.enemy_type == "ogre":
                 attacker.is_resting = True
-
+    
+    def _is_hit(self, attacker: Creature, defender: Creature) -> bool:
+        hit_chance = BASE_HIT_CHANCE + (attacker.dexterity * DEXTERITY_WEIGHT) - (defender.dexterity * DEXTERITY_WEIGHT)
+        hit_chance = max(3, min(98, hit_chance))
+        if random.randint(1, 100) > hit_chance:
+            return False
+        else:
+            return True
+    
+    def _check_creature_death(self, defender: Creature):
         if defender.health <= 0:
             if isinstance(defender, Enemy):
                 self.current_level.enemies.remove(defender)
@@ -111,38 +142,60 @@ class GameSession:
             elif isinstance(defender, Character):
                 self.is_game_over = True
 
-    def _update_enemies_turn(self):
-        for enemy in self.current_level.enemies:
-            if self.player.health <= 0:
-                break
+    def process_combat(self, attacker: Creature, defender: Creature):
 
-            if enemy.enemy_type == "ogre" and getattr(enemy, "is_resting", False):
+        if self._is_attack_blocked(defender):
+            return
+
+        if not self._is_hit(attacker, defender):
+            return
+        
+        self._apply_attack(attacker, defender)
+        self._check_creature_death(defender)
+
+    def _should_enemy_skip_turn(self, enemy: Enemy) -> bool:
+        if enemy.enemy_type == "ogre" and getattr(enemy, "is_resting", False):
                 enemy.is_resting = False
-                continue
-
-            if enemy.enemy_type == "mimic" and getattr(enemy, "is_disguised", False):
-                continue
-
-            distance = abs(enemy.x - self.player.x) + abs(enemy.y - self.player.y)
-
-            if enemy.enemy_type == "ghost":
+                return True
+        elif enemy.enemy_type == "mimic" and getattr(enemy, "is_disguised", False):
+                return True
+        else: 
+            return False
+    
+    def _update_enemy_special_states(self, enemy: Enemy, distance: int):
+        if enemy.enemy_type == "ghost":
                 if distance <= enemy.hostility:
                     enemy.is_invisible = False
                 else:
                     if random.randint(1, 100) <= 40:
                         enemy.is_invisible = not enemy.is_invisible
-                        
-            if distance == 1:
-                self.process_combat(enemy, self.player)
-            elif distance <= enemy.hostility:
-                nx, ny = self.get_next_step(enemy)
-                enemy.x = nx
-                enemy.y = ny
-            elif distance > enemy.hostility:
-                nx, ny = self.make_random_move(enemy)
-                enemy.x = nx
-                enemy.y = ny
-        if self.player.health <= (self.player.max_health * 0.3):
+    
+    def _execute_enemy_action(self, enemy: Enemy, distance: int):
+        if distance == 1:
+            self.process_combat(enemy, self.player)
+        elif distance <= enemy.hostility:
+            nx, ny = self.get_next_step(enemy)
+            enemy.x = nx
+            enemy.y = ny
+        elif distance > enemy.hostility:
+            nx, ny = self.make_random_move(enemy)
+            enemy.x = nx
+            enemy.y = ny
+        
+
+    def _update_enemies_turn(self):
+        for enemy in self.current_level.enemies:
+            if self.player.health <= 0:
+                break
+
+            if self._should_enemy_skip_turn(enemy):
+                continue
+            
+            distance = abs(enemy.x - self.player.x) + abs(enemy.y - self.player.y)
+            self._update_enemy_special_states(enemy, distance)
+            self._execute_enemy_action(enemy, distance)
+
+        if self.player.health <= (self.player.max_health * DDA_LOW_HEALTH_THRESHOLD):
             self.low_health_turns += 1
         self.current_level.update_visibility(self.player)
 
@@ -245,12 +298,12 @@ class GameSession:
     def calculate_difficulty_modifier(self) -> float:
         modifier = 1.0
         
-        if self.total_damage_taken > self.player.max_health or self.low_health_turns > 15:
-            modifier = 0.7
+        if self.total_damage_taken > self.player.max_health or self.low_health_turns > DDA_STRESS_TURNS_LIMIT:
+            modifier = DDA_EASY_MODIFIER
             self.message = "Режиссёр: Похоже, вам тяжело. Помощь близко..."
             
-        elif self.total_damage_taken < (self.player.max_health * 0.5) and self.low_health_turns < 3:
-            modifier = 1.3 
+        elif self.total_damage_taken < (self.player.max_health * 0.5) and self.low_health_turns < DDA_STRESS_TURNS_EASY:
+            modifier = DDA_HARD_MODIFIER 
             self.message = "Режиссёр: Слишком просто? Твари становятся злее!"
 
         self.total_damage_taken = 0

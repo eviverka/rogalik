@@ -1,6 +1,7 @@
 import random
 
 from domain.entities import *
+from config import *
 
 ITEMS_DATABASE = {
     "food": [
@@ -73,7 +74,7 @@ class Level:
         self.height = level_height
         self.doors: dict[tuple[int, int]: str] = {}
     
-    def is_door_locked(self, x: int, y: int, player: Character) -> str | None:
+    def is_door_locked(self, x: int, y: int, player: "Character") -> str | None:
         current_cell = (x, y)
 
         if current_cell in self.doors:
@@ -113,7 +114,7 @@ class Level:
                 
         return points
 
-    def update_visibility(self, player: Character, R: int = 7):
+    def update_visibility(self, player: "Character", R: int = PLAYER_VIEW_RADIUS):
         for ty in range(player.y - R, player.y + R + 1):
             for tx in range(player.x - R, player.x + R + 1):
                 if ty == player.y - R or ty == player.y + R or tx == player.x - R or tx == player.x + R:
@@ -140,6 +141,8 @@ class Level:
     
     @classmethod
     def from_dict(cls, data: dict):
+        from domain.entities import Enemy, Item
+
         level = cls(data["index"], data["width"], data["height"])
         level.exit_x = data["exit_x"]
         level.exit_y = data["exit_y"]
@@ -161,32 +164,20 @@ class LevelGenerator:
     def __init__(self, map_width: int = 80, map_height: int = 24):
         self.map_width = map_width
         self.map_height = map_height
-        self.sector_width = self.map_width // 3
-        self.sector_height = self.map_height // 3
+        self.sector_width = self.map_width // SECTOR_COLS
+        self.sector_height = self.map_height // SECTOR_ROWS
 
-    def check_level_solvability(self, level: Level, start_x: int, start_y: int) -> bool:
-        queue: list[tuple[int, int]] = []
-        queue.append((start_x, start_y))
-        visited = set()
-        collected_keys = set()
-        exit_reached = False
-        waiting_doors = {
-            "red": [],
-            "yellow": [],
-            "blue": []
-        }
-        while queue:
-            cx, cy = queue.pop(0)
-            if level.is_exit(cx, cy):
-                exit_reached = True
-            for item in level.items:
+    def _process_key_pickup_in_sim(self, level: Level, cx: int, cy: int, collected_keys: set, waiting_doors: dict, queue: list):
+        for item in level.items:
                 if cx == item.x and cy == item.y and item.item_type == "key":
                     collected_keys.add(item.name)
                     key_color = item.name.split('_')[0]
                     if waiting_doors[key_color] is not None:
                         queue.extend(waiting_doors[key_color])
                         waiting_doors[key_color] = []
-            for dx, dy in [(0,1), (0,-1), (1,0), (-1,0)]:
+    
+    def _explore_neighbors_in_sim(self, level: Level, cx: int, cy: int, visited: set, collected_keys: set, waiting_doors: dict, queue: list):
+        for dx, dy in [(0,1), (0,-1), (1,0), (-1,0)]:
                 nx = cx + dx
                 ny = cy + dy
                 neighbor = (nx, ny)
@@ -203,6 +194,24 @@ class LevelGenerator:
                 else:
                     visited.add(neighbor)
                     queue.append(neighbor)
+
+    def check_level_solvability(self, level: Level, start_x: int, start_y: int) -> bool:
+        queue: list[tuple[int, int]] = []
+        queue.append((start_x, start_y))
+        visited = {(start_x, start_y)}
+        collected_keys = set()
+        exit_reached = False
+        waiting_doors = {
+            "red": [],
+            "yellow": [],
+            "blue": []
+        }
+        while queue:
+            cx, cy = queue.pop(0)
+            if level.is_exit(cx, cy):
+                exit_reached = True
+            self._process_key_pickup_in_sim(level, cx, cy, collected_keys, waiting_doors, queue)
+            self._explore_neighbors_in_sim(level, cx, cy, visited, collected_keys, waiting_doors, queue)
         
         all_doors_opened = (
             len(waiting_doors["red"]) == 0 and 
@@ -213,8 +222,8 @@ class LevelGenerator:
         return exit_reached and all_doors_opened
 
     def generate_rooms(self, level: Level):
-        for row in range(3):
-            for col in range(3):
+        for row in range(SECTOR_ROWS):
+            for col in range(SECTOR_COLS):
                 start_sector_x = col * self.sector_width
                 start_sector_y = row * self.sector_height
                 room_width = random.randint(5, self.sector_width - 2)
@@ -227,10 +236,10 @@ class LevelGenerator:
                 room_y = start_sector_y + offset_y
                 new_room = Room(room_x, room_y, room_width, room_height)
                 level.rooms.append(new_room)
-        
-    def generate_corridors(self, level: Level):
+
+    def _generate_connected_room_graph(self) -> dict[int, list[int]]:
         while True:
-            room_graph = {i: [] for i in range(9)}
+            room_graph = {i: [] for i in range(TOTAL_SECTORS)}
             visited = set()
 
             def dfs(node):
@@ -239,9 +248,9 @@ class LevelGenerator:
                     if neighbor not in visited:
                         dfs(neighbor)
             
-            for i in range(9):
-                row = i // 3
-                col = i % 3
+            for i in range(TOTAL_SECTORS):
+                row = i // SECTOR_ROWS
+                col = i % SECTOR_COLS
                 if col < 2:
                     right_neighbor = i + 1
                     if random.choice([True, False]):
@@ -252,9 +261,26 @@ class LevelGenerator:
                         self.add_relation(room_graph, i, bottom_neighbor)
 
             dfs(0)
-            if len(visited) == 9:
+            if len(visited) == TOTAL_SECTORS:
                 break
-        for i in range(9):
+        return room_graph
+    
+    def _dig_l_shaped_corridor(self, ax: int, ay: int, bx: int, by: int) -> Corridor:
+        corridor_points = set()
+        start_x = min(ax, bx)
+        end_x = max(ax, bx)
+        for x in range(start_x, end_x + 1):
+            corridor_points.add((x, ay))
+        start_y = min(ay, by)
+        end_y = max(ay, by)
+        for y in range(start_y, end_y + 1):
+            corridor_points.add((bx, y))
+        new_corridor = Corridor(corridor_points)
+        return new_corridor
+
+    def generate_corridors(self, level: Level):
+        room_graph = self._generate_connected_room_graph()
+        for i in range(TOTAL_SECTORS):
             for neighbor in room_graph[i]:
                 if i < neighbor:
                     room_a = level.rooms[i]
@@ -263,16 +289,8 @@ class LevelGenerator:
                     ay = room_a.y + room_a.height // 2
                     bx = room_b.x + room_b.width // 2
                     by = room_b.y + room_b.height // 2
-                    corridor_points = set()
-                    start_x = min(ax, bx)
-                    end_x = max(ax, bx)
-                    for x in range(start_x, end_x + 1):
-                        corridor_points.add((x, ay))
-                    start_y = min(ay, by)
-                    end_y = max(ay, by)
-                    for y in range(start_y, end_y + 1):
-                        corridor_points.add((bx, y))
-                    new_corridor = Corridor(corridor_points)
+                    
+                    new_corridor = self._dig_l_shaped_corridor(ax, ay, bx, by)
                     level.corridors.append(new_corridor)
 
     def add_relation(self, graph, node_a: int, node_b: int):
@@ -289,43 +307,61 @@ class LevelGenerator:
         level.exit_y = random.randint(end_room.y + 1, end_room.y + end_room.height - 2)
         return player_start_x, player_start_y
     
-    def spawn_items(self, level: Level, modifier: float = 1.0):
-        for _ in range(random.randint(int(5 * modifier), int(9 * modifier))):
-            room = random.choice(level.rooms)
+    def _get_valid_item_position(self, level: Level) -> tuple[int, int]:
+        room = random.choice(level.rooms)
+        ix = random.randint(room.x + 1, room.x + room.width - 2)
+        iy = random.randint(room.y + 1, room.y + room.height - 2)
+        
+        while level.is_exit(ix, iy):
             ix = random.randint(room.x + 1, room.x + room.width - 2)
             iy = random.randint(room.y + 1, room.y + room.height - 2)
+        
+        return (ix, iy)
+    
+    def _select_item_category(self, modifier: float) -> str:
+        available_categories = list(ITEMS_DATABASE.keys())
+        available_categories.append("treasure")
+        available_categories.remove("keys")
             
-            while level.is_exit(ix, iy):
-                ix = random.randint(room.x + 1, room.x + room.width - 2)
-                iy = random.randint(room.y + 1, room.y + room.height - 2)
+        if modifier < 1.0:
+            category = random.choice(["food", "elixirs", "treasure", "food", "elixirs", "food"])
+        else:
+            category = random.choice(available_categories)
 
-            available_categories = list(ITEMS_DATABASE.keys())
-            available_categories.append("treasure")
-                
-            if modifier < 1.0:
-                category = random.choice(["food", "elixirs", "treasure", "food", "elixirs", "food"])
-            else:
-                category = random.choice(available_categories)
+        return category
+    
+    def _create_item_instance(self, x: int, y: int, category: str) -> Item:
+        from domain.entities import Item
+
+        if category == "treasure":
+            item = Item(x, y, "treasure", "Золото", cost=random.randint(15, 60))
+        else:
+            template = random.choice(ITEMS_DATABASE[category])
             
-            if category == "treasure":
-                item = Item(ix, iy, "treasure", "Золото", cost=random.randint(15, 60))
-            else:
-                template = random.choice(ITEMS_DATABASE[category])
-                
-                item = Item(
-                    x=ix, y=iy,
-                    item_type=category,
-                    name=template["name"],
-                    health_bonus=template.get("health_bonus", 0),
-                    max_health_bonus=template.get("max_health_bonus", 0),
-                    strength_bonus=template.get("strength_bonus", 0),
-                    dexterity_bonus=template.get("dexterity_bonus", 0),
-                    cost=0
-                )
-                
+            item = Item(
+                x=x, y=y,
+                item_type=category,
+                name=template["name"],
+                health_bonus=template.get("health_bonus", 0),
+                max_health_bonus=template.get("max_health_bonus", 0),
+                strength_bonus=template.get("strength_bonus", 0),
+                dexterity_bonus=template.get("dexterity_bonus", 0),
+                cost=0
+            )
+
+        return item
+
+    def spawn_items(self, level: Level, modifier: float = 1.0):
+
+        for _ in range(random.randint(int(5 * modifier), int(9 * modifier))):
+            ix, iy = self._get_valid_item_position(level)
+            category = self._select_item_category(modifier)
+            item = self._create_item_instance(ix, iy, category)
             level.items.append(item)
 
     def spawn_enemies(self, level: Level, modifier: float = 1.0):
+        from domain.entities import Enemy
+
         min_enemies = max(1, int(3*modifier))
         max_enemies = max(4, int(8*modifier))
         if 5 <= level.index < 12:
@@ -351,6 +387,8 @@ class LevelGenerator:
             level.enemies.append(enemy)
 
     def place_doors_and_keys(self, level: Level, player_x: int, player_y: int):
+        from domain.entities import Item
+
         colors = ("red", "yellow", "blue")
         valid_door_spots = []
         
