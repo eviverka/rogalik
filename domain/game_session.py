@@ -150,6 +150,7 @@ class GameSession:
             return
 
         if not self._is_hit(attacker, defender):
+            self.messages.append(f"{attacker.name} промахнулся!")
             return
         
         self._apply_attack(attacker, defender)

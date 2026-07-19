@@ -1,5 +1,6 @@
 saves*
 scores*
+*venv*
 **/__pycache__/
 *.json
 *.pyc

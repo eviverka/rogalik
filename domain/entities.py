@@ -55,8 +55,8 @@ class Item:
         )
 
 class Character(Creature):
-    def __init__(self, start_x: int, start_y: int, max_health: int, strength: int, dexterity: int, current_weapon: Item = None, backpack = None):
-        super().__init__(start_x, start_y, max_health, strength, dexterity)
+    def __init__(self, start_x: int, start_y: int, max_health: int, strength: int, dexterity: int, current_weapon: Item = None, backpack = None, name: str = ""):
+        super().__init__(start_x, start_y, max_health, strength, dexterity, name)
         self.gold = 0
         self.keys = set()
 

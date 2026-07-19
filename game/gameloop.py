@@ -13,7 +13,7 @@ def initialize_session(player_name: str, level_generator: LevelGenerator, save_m
         session = GameSession.from_dict(save_data, level_generator)
     else:
         first_level, start_x, start_y = level_generator.build_level(1)
-        player = Character(start_x, start_y, INITIAL_PLAYER_HP, INITIAL_PLAYER_STR, INITIAL_PLAYER_DEX)
+        player = Character(start_x, start_y, INITIAL_PLAYER_HP, INITIAL_PLAYER_STR, INITIAL_PLAYER_DEX, name=player_name)
         session = GameSession(player, first_level, level_generator)
 
     return session

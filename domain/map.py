@@ -387,7 +387,7 @@ class LevelGenerator:
             enemy = Enemy(ex, ey, enemy_type, name=enemy_type)
             enemy.max_health = int(enemy.max_health * (modifier*DDA_MODIFIER_HARDNESS_COEFF))
             enemy.health = enemy.max_health
-            enemy.strength = max(int(enemy.strength * (modifier*DDA_MODIFIER_HARDNESS_COEFF)), DDA_ENEMY_MAX_STR)
+            enemy.strength = min(int(enemy.strength * (modifier*DDA_MODIFIER_HARDNESS_COEFF)), DDA_ENEMY_MAX_STR)
             level.enemies.append(enemy)
 
     def place_doors_and_keys(self, level: Level, player_x: int, player_y: int):
