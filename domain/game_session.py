@@ -304,11 +304,12 @@ class GameSession:
             self.messages.append("Режиссёр: Похоже, вам тяжело. Помощь близко...")
             
         elif self.total_damage_taken < (self.player.max_health * 0.5) and self.low_health_turns < DDA_STRESS_TURNS_EASY:
-            modifier = DDA_HARD_MODIFIER 
-            self.messages.append("Режиссёр: Слишком просто? Твари становятся злее!")
-        elif modifier >= DDA_HARD_MODIFIER:
-            modifier += DDA_MODIFIER_HARDNESS
-            self.messages.append("Режиссёр: Слишком просто? Твари становятся злее!")
+            if modifier >= DDA_HARD_MODIFIER:
+                modifier += DDA_MODIFIER_HARDNESS
+                self.messages.append("Режиссёр: Слишком просто? Твари становятся злее!")
+            else:
+                modifier = DDA_HARD_MODIFIER 
+                self.messages.append("Режиссёр: Слишком просто? Твари становятся злее!")
 
         self.total_damage_taken = 0
         self.low_health_turns = 0
