@@ -40,7 +40,6 @@ def finalize_game(player_name: str, session: GameSession, save_manager: SaveMana
     scoreboard = ScoreboardManager()
     scoreboard.add_score(player_name, session)
 
-
 def game_loop(stdscr: curses.window):
     renderer = GameRenderer()
     player_name = get_player_name(stdscr)

@@ -27,6 +27,7 @@ DDA_ENEMY_MAX_STR = 50
 
 SAVE_DIRECTORY = "saves"
 SAVE_FILE_MASK = "gamesave_.json"
+SCOREBOARD_FILE_PATH = "scores/scoreboard.json"
 
 ENEMY_BALANCING = {
     "zombie":     {"max_health": 30, "strength": 2, "dexterity": 2,  "hostility": 4},
