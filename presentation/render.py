@@ -100,7 +100,7 @@ class GameRenderer:
                         if not enemy.is_disguised: 
                             stdscr.addch(enemy.y, enemy.x, 'm', curses.color_pair(5))
                         else: 
-                            self.draw_single_item(enemy.y, enemy.x, enemy.is_disguised_as)
+                            self.draw_single_item(stdscr, enemy.y, enemy.x, enemy.is_disguised_as)
 
     def render_entities(self, stdscr: curses.window, level: Level, player: Character, R: int = PLAYER_VIEW_RADIUS):
         self.render_items(stdscr, level, player, R)
@@ -129,8 +129,9 @@ class GameRenderer:
             f"Ключи: {keys_hud}"
         )
         stdscr.addstr(line, col, hud_text)
-        if getattr(session, "message", ""):
-            stdscr.addstr(line + 1, col, session.message, curses.color_pair(2))
+        full_log = " | ".join(session.messages)
+        if full_log:
+            stdscr.addstr(line + 1, col, full_log, curses.color_pair(2))
     
     def render_inventory(self, stdscr: curses.window, level: Level, player: Character, item_type: str, line: int = 15, col: int = 5) -> int:
         stdscr.clear()

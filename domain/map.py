@@ -383,8 +383,9 @@ class LevelGenerator:
                 enemy_pool.update(["vampire", "snake_mage", "mimic"])
             if 12 <= level.index:
                 enemy_pool.update(["vampire", "snake_mage", "mimic", "ogre"])
-            enemy = Enemy(ex, ey, random.choice(list(enemy_pool)))
-            enemy.max_health *= modifier
+            enemy_type = random.choice(list(enemy_pool))
+            enemy = Enemy(ex, ey, enemy_type, name=enemy_type)
+            enemy.max_health = int(enemy.max_health * (modifier+0.2))
             enemy.health = enemy.max_health
             level.enemies.append(enemy)
 

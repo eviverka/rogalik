@@ -3,7 +3,7 @@ from domain.map import ITEMS_DATABASE
 from config import *
 
 class Creature:
-    def __init__(self, start_x: int = 0, start_y: int = 0, max_health: int = 10, strength: int = 5, dexterity: int = 5):
+    def __init__(self, start_x: int = 0, start_y: int = 0, max_health: int = 10, strength: int = 5, dexterity: int = 5, name: str = ""):
         if max_health<=0:
             max_health = 10
 
@@ -13,6 +13,7 @@ class Creature:
         self.health = max_health
         self.strength = strength
         self.dexterity = dexterity
+        self.name = name
 
 class Item:
     def __init__(self, x: int, y: int, item_type: str, name: str, health_bonus = 0, max_health_bonus = 0, strength_bonus = 0, dexterity_bonus = 0, cost = 0):
@@ -164,10 +165,9 @@ class Character(Creature):
         
         return player
                 
-
 class Enemy(Creature):
-    def __init__(self, start_x: int, start_y: int, enemy_type: str):
-        super().__init__(start_x, start_y)
+    def __init__(self, start_x: int, start_y: int, enemy_type: str, name: str):
+        super().__init__(start_x, start_y, name=name)
         self.enemy_type = enemy_type
         
         stats = ENEMY_BALANCING.get(enemy_type, {"max_health": 10, "strength": 2, "dexterity": 2, "hostility": 1})
@@ -203,12 +203,13 @@ class Enemy(Creature):
             "is_resting": getattr(self, "is_resting", False),
             "is_disguised": getattr(self, "is_disguised", False),
             "is_disguised_as": getattr(self, "is_disguised_as", ""),
-            "is_invisible": getattr(self, "is_invisible", False)
+            "is_invisible": getattr(self, "is_invisible", False),
+            "name": self.name
         }
     
     @classmethod
     def from_dict(cls, data: dict):
-        enemy = cls(data["x"], data["y"], data["enemy_type"])
+        enemy = cls(data["x"], data["y"], data["enemy_type"], data["name"])
         enemy.health = data["health"]
         enemy.max_health = data["max_health"]
 

@@ -18,7 +18,7 @@ class GameSession:
         self.is_game_over = False
         self.is_victory = False
         self.current_level.update_visibility(self.player)
-        self.message: str = ""
+        self.messages: list[str] = []
 
     def _can_move_to(self, x: int, y: int) -> bool:
         if not self.current_level.is_walkable(x, y):
@@ -26,7 +26,7 @@ class GameSession:
         
         door_color = self.current_level.is_door_locked(x, y, self.player)
         if door_color:
-            self.message = f"Door locked! Required {door_color} key."
+            self.messages.append(f"Door locked! Required {door_color} key.")
             return False
         
         return True
@@ -41,9 +41,7 @@ class GameSession:
         if target_enemy is not None:
             if target_enemy.enemy_type == "mimic" and getattr(target_enemy, "is_disguised", False):
                 target_enemy.is_disguised = False
-                self.message = "Это ловушка! Перед вами Мимик!"
-            else:
-                self.message = ""
+                self.messages.append("Это ловушка! Перед вами Мимик!")
             self.process_combat(self.player, target_enemy)
             self._update_enemies_turn()
             return True
@@ -77,8 +75,10 @@ class GameSession:
             return False
 
     def try_move_player(self, dx: int = 0, dy: int = 0):
+        self.messages.clear()
         new_x = self.player.x + dx
         new_y = self.player.y + dy
+
 
         if not self._can_move_to(new_x, new_y):
             return
@@ -86,7 +86,6 @@ class GameSession:
         if self._met_enemy(new_x, new_y):
             return
         
-        self.message = ""
         self.player.x = new_x
         self.player.y = new_y
         self.steps_passed += 1
@@ -116,6 +115,9 @@ class GameSession:
         defender.health -= damage
         if isinstance(defender, Character):
             self.total_damage_taken += damage
+            self.messages.append(f"Вы получили {damage} урона от {attacker.name}")
+        if isinstance(defender, Enemy):
+            self.messages.append(f"Вы нанесли {damage} урона {defender.name}. У него осталось {defender.health} очков здоровья!")
 
         if isinstance(attacker, Enemy):
             if attacker.enemy_type == "vampire":
@@ -182,7 +184,6 @@ class GameSession:
             enemy.x = nx
             enemy.y = ny
         
-
     def _update_enemies_turn(self):
         for enemy in self.current_level.enemies:
             if self.player.health <= 0:
@@ -300,11 +301,14 @@ class GameSession:
         
         if self.total_damage_taken > self.player.max_health or self.low_health_turns > DDA_STRESS_TURNS_LIMIT:
             modifier = DDA_EASY_MODIFIER
-            self.message = "Режиссёр: Похоже, вам тяжело. Помощь близко..."
+            self.messages.append("Режиссёр: Похоже, вам тяжело. Помощь близко...")
             
         elif self.total_damage_taken < (self.player.max_health * 0.5) and self.low_health_turns < DDA_STRESS_TURNS_EASY:
             modifier = DDA_HARD_MODIFIER 
-            self.message = "Режиссёр: Слишком просто? Твари становятся злее!"
+            self.messages.append("Режиссёр: Слишком просто? Твари становятся злее!")
+        elif modifier >= DDA_HARD_MODIFIER:
+            modifier += DDA_MODIFIER_HARDNESS
+            self.messages.append("Режиссёр: Слишком просто? Твари становятся злее!")
 
         self.total_damage_taken = 0
         self.low_health_turns = 0
