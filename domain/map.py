@@ -265,7 +265,7 @@ class LevelGenerator:
                 break
         return room_graph
     
-    def _dig_l_shaped_corridor(self, ax: int, ay: int, bx: int, by: int) -> Corridor:
+    def _dig_l_shaped_corridor(self, ax: int, ay: int, bx: int, by: int) -> "Corridor":
         corridor_points = set()
         start_x = min(ax, bx)
         end_x = max(ax, bx)
@@ -330,7 +330,7 @@ class LevelGenerator:
 
         return category
     
-    def _create_item_instance(self, x: int, y: int, category: str) -> Item:
+    def _create_item_instance(self, x: int, y: int, category: str) -> "Item":
         from domain.entities import Item
 
         if category == "treasure":
@@ -384,6 +384,8 @@ class LevelGenerator:
             if 12 <= level.index:
                 enemy_pool.update(["vampire", "snake_mage", "mimic", "ogre"])
             enemy = Enemy(ex, ey, random.choice(list(enemy_pool)))
+            enemy.max_health *= modifier
+            enemy.health = enemy.max_health
             level.enemies.append(enemy)
 
     def place_doors_and_keys(self, level: Level, player_x: int, player_y: int):
