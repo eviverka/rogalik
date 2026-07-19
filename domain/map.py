@@ -3,33 +3,6 @@ import random
 from domain.entities import *
 from config import *
 
-ITEMS_DATABASE = {
-    "food": [
-        {"name": "Спелое Яблоко (лечение: +4)", "health_bonus": 4},
-        {"name": "Краюха Хлеба (лечение +6)", "health_bonus": 6},
-        {"name": "Армейский Рацион (лечение +10)", "health_bonus": 10}
-    ],
-    "elixirs": [
-        {"name": "Малое Зелье Лечения (лечение +8)", "health_bonus": 8},
-        {"name": "Эликсир Огра (сила +2, макс. здоровье +2, лечение +5)", "strength_bonus": 2, "max_health_bonus": 5, "health_bonus": 5},
-        {"name": "Зелье Кошачьей Грации (ловкость +3)", "dexterity_bonus": 3}
-    ],
-    "scrolls": [
-        {"name": "Свиток Мудрости (макс. здоровье +3, лечение +3)", "max_health_bonus": 3, "health_bonus": 3},
-        {"name": "Свиток Заточки Оружия (сила +1)", "strength_bonus": 1},
-        {"name": "Древний Манускрипт (сила +2, ловкость +2)", "strength_bonus": 2, "dexterity_bonus": 2}
-    ],
-    "weapons": [
-        {"name": "Ржавый Кинжал (+1)", "strength_bonus": 1},
-        {"name": "Железный Короткий Меч (+3)", "strength_bonus": 3},
-        {"name": "Стальной Двуручник (+5)", "strength_bonus": 5}
-    ],
-    "keys": [
-        {"name": "red_key"},
-        {"name": "yellow_key"},
-        {"name": "blue_key"},
-    ]
-}
 
 class Room:
     def __init__(self, start_x: int, start_y: int, width: int, height: int):

@@ -1,5 +1,4 @@
 import random
-from domain.map import ITEMS_DATABASE
 from config import *
 
 class Creature:
@@ -170,7 +169,7 @@ class Enemy(Creature):
         super().__init__(start_x, start_y, name=name)
         self.enemy_type = enemy_type
         
-        stats = ENEMY_BALANCING.get(enemy_type, {"max_health": 10, "strength": 2, "dexterity": 2, "hostility": 1})
+        stats = ENEMY_DATABASE.get(enemy_type, {"max_health": 10, "strength": 2, "dexterity": 2, "hostility": 1})
         
         self.max_health = stats["max_health"]
         self.strength = stats["strength"]

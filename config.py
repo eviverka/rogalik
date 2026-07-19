@@ -29,11 +29,39 @@ SAVE_DIRECTORY = "saves"
 SAVE_FILE_MASK = "gamesave_.json"
 SCOREBOARD_FILE_PATH = "scores/scoreboard.json"
 
-ENEMY_BALANCING = {
+ENEMY_DATABASE = {
     "zombie":     {"max_health": 30, "strength": 2, "dexterity": 2,  "hostility": 4},
     "vampire":    {"max_health": 25, "strength": 4, "dexterity": 8,  "hostility": 6},
     "ghost":      {"max_health": 10, "strength": 2, "dexterity": 7,  "hostility": 5},
     "ogre":       {"max_health": 45, "strength": 10,"dexterity": 3,  "hostility": 4},
     "snake_mage": {"max_health": 15, "strength": 3, "dexterity": 10, "hostility": 7},
     "mimic":      {"max_health": 40, "strength": 2, "dexterity": 12, "hostility": 2}
+}
+
+ITEMS_DATABASE = {
+    "food": [
+        {"name": "Спелое Яблоко (лечение: +4)", "health_bonus": 4},
+        {"name": "Краюха Хлеба (лечение +6)", "health_bonus": 6},
+        {"name": "Армейский Рацион (лечение +10)", "health_bonus": 10}
+    ],
+    "elixirs": [
+        {"name": "Малое Зелье Лечения (лечение +8)", "health_bonus": 8},
+        {"name": "Эликсир Огра (сила +2, макс. здоровье +2, лечение +5)", "strength_bonus": 2, "max_health_bonus": 5, "health_bonus": 5},
+        {"name": "Зелье Кошачьей Грации (ловкость +3)", "dexterity_bonus": 3}
+    ],
+    "scrolls": [
+        {"name": "Свиток Мудрости (макс. здоровье +3, лечение +3)", "max_health_bonus": 3, "health_bonus": 3},
+        {"name": "Свиток Заточки Оружия (сила +1)", "strength_bonus": 1},
+        {"name": "Древний Манускрипт (сила +2, ловкость +2)", "strength_bonus": 2, "dexterity_bonus": 2}
+    ],
+    "weapons": [
+        {"name": "Ржавый Кинжал (+1)", "strength_bonus": 1},
+        {"name": "Железный Короткий Меч (+3)", "strength_bonus": 3},
+        {"name": "Стальной Двуручник (+5)", "strength_bonus": 5}
+    ],
+    "keys": [
+        {"name": "red_key"},
+        {"name": "yellow_key"},
+        {"name": "blue_key"},
+    ]
 }
